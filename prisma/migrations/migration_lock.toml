@@ -1,0 +1,13 @@
+{
+  "provider": "postgresql",
+  "name": "init",
+  "createdAt": "2024-11-17T00:00:00.000Z",
+  "customSchema": false,
+  "steps": [
+    {
+      "name": "init",
+      "version": "1",
+      "schema": "public"
+    }
+  ]
+}
