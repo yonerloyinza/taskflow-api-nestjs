@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, Inject } from '@nestjs/common';
 import { PrismaClient, TaskStatus as PrismaTaskStatus, TaskPriority as PrismaTaskPriority, Prisma } from '@prisma/client';
 import { CreateTaskDto } from './dto/create-task.dto.js';
 import { UpdateTaskDto } from './dto/update-task.dto.js';
@@ -6,12 +6,14 @@ import { TaskResponseDto, PaginatedTasksResponseDto } from './dto/task-response.
 import { TaskStatus } from './enums/task-status.enum.js';
 import { TaskPriority } from './enums/task-priority.enum.js';
 
-const prisma = new PrismaClient();
+export const PRISMA_CLIENT = 'PRISMA_CLIENT';
 
 @Injectable()
 export class TasksService {
+  constructor(@Inject(PRISMA_CLIENT) private readonly prisma: PrismaClient) {}
+
   async create(dto: CreateTaskDto): Promise<TaskResponseDto> {
-    const task = await prisma.task.create({
+    const task = await this.prisma.task.create({
       data: {
         title: dto.title,
         description: dto.description ?? null,
@@ -37,13 +39,13 @@ export class TasksService {
     if (assignee) where.assignee = { contains: assignee, mode: 'insensitive' };
 
     const [tasks, total] = await Promise.all([
-      prisma.task.findMany({
+      this.prisma.task.findMany({
         where,
         skip: (page - 1) * limit,
         take: limit,
         orderBy: { createdAt: 'desc' },
       }),
-      prisma.task.count({ where }),
+      this.prisma.task.count({ where }),
     ]);
 
     return {
@@ -58,13 +60,13 @@ export class TasksService {
   }
 
   async findOne(id: string): Promise<TaskResponseDto> {
-    const task = await prisma.task.findUnique({ where: { id } });
+    const task = await this.prisma.task.findUnique({ where: { id } });
     if (!task) throw new NotFoundException('Tarea no encontrada');
     return this.toResponse(task);
   }
 
   async update(id: string, dto: UpdateTaskDto): Promise<TaskResponseDto> {
-    const task = await prisma.task.findUnique({ where: { id } });
+    const task = await this.prisma.task.findUnique({ where: { id } });
     if (!task) throw new NotFoundException('Tarea no encontrada');
 
     const data: Prisma.TaskUpdateInput = {};
@@ -75,14 +77,14 @@ export class TasksService {
     if (dto.assignee !== undefined) data.assignee = dto.assignee;
     if (dto.dueDate !== undefined) data.dueDate = new Date(dto.dueDate);
 
-    const updated = await prisma.task.update({ where: { id }, data });
+    const updated = await this.prisma.task.update({ where: { id }, data });
     return this.toResponse(updated);
   }
 
   async delete(id: string): Promise<void> {
-    const task = await prisma.task.findUnique({ where: { id } });
+    const task = await this.prisma.task.findUnique({ where: { id } });
     if (!task) throw new NotFoundException('Tarea no encontrada');
-    await prisma.task.delete({ where: { id } });
+    await this.prisma.task.delete({ where: { id } });
   }
 
   private toResponse(task: {
