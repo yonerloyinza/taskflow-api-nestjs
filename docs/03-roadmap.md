@@ -6,4 +6,4 @@
 - [x] **Paso 3 — Implementación del Contrato (`docs/openapi.yaml`):** Endpoints CRUD Tasks, filtros (`status`, `priority`, `assignee`), paginación, manejo errores `ErrorResponse`, `GET /health` con verificación DB.
 - [x] **Paso 4 — Testing:** Suite unitarias (TasksService) + integración (TasksController) con Vitest/Supertest, 25 tests passing.
 - [x] **Paso 5a — Documentación y Docker:** AGENTS.md actualizado, docs/01-architecture.md, render.yaml con `prisma generate`/`migrate deploy`, Dockerfile multi-etapa 512MB RAM.
-- [ ] **Paso 5b — CI/CD:** Pipeline automatizado (GitHub Actions) y `README.md` con instrucciones alternar InsForge/Supabase + bitácora IA.
+- [x] **Paso 5b — CI/CD:** Pipeline automatizado (GitHub Actions CI/CD) y `README.md` con instrucciones alternar InsForge/Supabase + bitácora IA.

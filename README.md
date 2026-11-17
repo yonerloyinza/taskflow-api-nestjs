@@ -1,132 +1,202 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
-</p>
+# TaskFlow API — NestJS Implementation
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+Backend API for the TaskFlow ecosystem built with **Node.js 20 + TypeScript + NestJS + Prisma ORM**, implementing the shared **OpenAPI 3.1 contract** (`docs/openapi.yaml`).
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+## 🚀 Quick Start
 
-## Description
+### Prerequisites
+- Node.js 20+
+- npm 10+
+- PostgreSQL cloud database (InsForge or Supabase)
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
-
-## Project setup
-
+### Installation
 ```bash
-$ npm install
+# Clone and install
+git clone https://github.com/yonerloyinza/taskflow-api-nestjs.git
+cd taskflow-api-nestjs
+npm ci
+
+# Configure environment (choose one provider)
+cp .env.insforge.example .env    # For InsForge
+# OR
+cp .env.supabase.example .env    # For Supabase
+
+# Edit .env with your credentials
+# DATABASE_URL (pooler port 6543) and DIRECT_URL (port 5432)
+
+# Generate Prisma Client
+npm run prisma:generate
+
+# Run migrations
+npm run prisma:migrate
+
+# Start development server
+npm run start:dev
 ```
 
-## Compile and run the project
-
+### Available Scripts
 ```bash
-# development
-$ npm run start
-
-# watch mode
-$ npm run start:dev
-
-# production mode
-$ npm run start:prod
+npm run build          # Compile TypeScript
+npm run start:prod     # Run production build
+npm run start:dev      # Development with hot reload
+npm run lint           # Run oxlint
+npm run test           # Unit tests (Vitest)
+npm run test:e2e       # E2E tests (requires DB)
+npm run prisma:generate # Generate Prisma Client
+npm run prisma:migrate  # Create & apply migrations (dev)
+npm run prisma:deploy   # Apply migrations (prod)
 ```
 
-## Run tests
+---
 
+## 🔧 Environment Configuration
+
+### Dual Cloud Provider Support (Vendor-Agnostic)
+
+This project connects to **PostgreSQL in the cloud** using only **Prisma ORM** — no proprietary SDKs. Switch providers by changing `.env`:
+
+| Variable | InsForge | Supabase | Purpose |
+|----------|----------|----------|---------|
+| `DATABASE_URL` | `postgresql://...@POOLER-HOST.insforge.cloud:6543/...` | `postgresql://...@aws-0-region.pooler.supabase.com:6543/...` | Runtime connection (pooler) |
+| `DIRECT_URL` | `postgresql://...@DIRECT-HOST.insforge.cloud:5432/...` | `postgresql://...@db.PROJECT_REF.supabase.co:5432/...` | Migrations (direct) |
+
+### InsForge Setup
 ```bash
-# unit tests
-$ npm run test
+# 1. Login and link project
+npx @insforge/cli login
+npx @insforge/cli link
 
-# e2e tests
-$ npm run test:e2e
+# 2. Get connection strings
+npx @insforge/cli db connection-string
 
-# test coverage
-$ npm run test:cov
+# 3. Update .env with real values
+DATABASE_URL="postgresql://postgres:PASSWORD@APPKEY.region.database.insforge.app:6543/dbname?sslmode=require&pgbouncer=true"
+DIRECT_URL="postgresql://postgres:PASSWORD@APPKEY.region.database.insforge.app:5432/dbname?sslmode=require"
 ```
 
-## Deployment
-
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
-
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
-
+### Supabase Setup
 ```bash
-$ npm install -g @nestjs/mau
-$ mau deploy
+# 1. Create project at supabase.com
+# 2. Get connection strings from Settings > Database
+# 3. Update .env
+DATABASE_URL="postgresql://postgres.PROJECT_REF:PASSWORD@aws-0-region.pooler.supabase.com:6543/postgres?pgbouncer=true"
+DIRECT_URL="postgresql://postgres:PASSWORD@db.PROJECT_REF.supabase.co:5432/postgres?sslmode=require"
 ```
 
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
+---
 
-## Observability
+## 📡 API Endpoints
 
-In production applications, observability is essential for understanding how your system behaves, detecting issues early, and maintaining reliable performance.
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/health` | Health check (verifies DB connection) |
+| `POST` | `/tasks` | Create task |
+| `GET` | `/tasks` | List tasks (filters: `status`, `priority`, `assignee`; pagination: `page`, `limit`) |
+| `GET` | `/tasks/:id` | Get task by UUID |
+| `PATCH` | `/tasks/:id` | Partial update |
+| `DELETE` | `/tasks/:id` | Delete task |
 
-[NestJS Observe](https://observe.nestjs.com) automatically instruments your NestJS application, giving you deep visibility into your system with minimal setup:
-
-- **Distributed tracing:** Follow requests across services and understand how they flow through your system.
-- **Waterfall analysis:** Visualize request execution and identify slow operations, bottlenecks, and unexpected delays.
-- **Performance analysis:** Analyze application performance in real time and quickly pinpoint areas that need optimization.
-- **Metrics:** Track key application and infrastructure metrics to understand system health and performance trends.
-- **Logging:** Centralize and correlate logs with traces and other telemetry to make debugging easier.
-- **Error tracking:** Detect errors quickly and investigate their root causes with the surrounding context.
-- **SLA monitoring:** Track service-level objectives and identify when your application is approaching or exceeding defined thresholds.
-- **Alarms and alerts:** Set up alerts for critical errors, performance degradation, SLA violations, and other anomalies so your team can react quickly.
-
-To add it to this project, run this and approve the code it prints at [observe.nestjs.com/link](https://observe.nestjs.com/link) - signing up for free if you have no account:
-
-```bash
-$ npx @nestjs/observe link
+### Filters & Pagination (GET `/tasks`)
+```
+GET /tasks?status=pendiente&priority=alta&assignee=juan&page=1&limit=20
 ```
 
-It installs `@nestjs/observe`, wires it into `AppModule` and `main.ts`, and writes the app key and secret into `.env`, which every `nest start` script (`start`, `start:dev`, `start:debug`) then loads. In production, set `OBSERVE_APP_KEY` and `OBSERVE_APP_SECRET` in the environment instead.
+### Response Format
+All responses follow the OpenAPI contract:
+- **Success:** Data + meta (for pagination)
+- **Error:** `{ statusCode, error, message, timestamp, path }`
 
-Or do it by hand:
+---
 
+## 🏗️ Architecture
+
+- **Contract-First:** 100% compliance with `docs/openapi.yaml`
+- **Vendor-Agnostic DB:** Pure Prisma, no `@supabase/supabase-js` or `@insforge/sdk`
+- **Dual Connection:** `DATABASE_URL` (pooler 6543) + `DIRECT_URL` (5432)
+- **Security:** Helmet, CORS, Rate Limiting (Throttler), Global ValidationPipe
+- **Error Handling:** Global `HttpExceptionFilter` with standardized `ErrorResponse`
+
+---
+
+## 🐳 Deployment
+
+### Render (Native Web Service)
+**`render.yaml`** configures:
+- Build: `npm ci && npx prisma generate && npm run build`
+- Start: `npx prisma migrate deploy && node dist/main`
+- Health check: `GET /health`
+
+Required secrets in Render dashboard:
+- `DATABASE_URL`
+- `DIRECT_URL`
+
+### Docker (Portable to AWS)
 ```bash
-$ npm install @nestjs/observe
+# Build
+docker build -t taskflow-api-nestjs .
+
+# Run (requires DATABASE_URL and DIRECT_URL)
+docker run -p 3000:3000 \
+  -e DATABASE_URL="..." \
+  -e DIRECT_URL="..." \
+  taskflow-api-nestjs
 ```
 
-Then follow the [setup guide](https://docs.nestjs.com/observability/sdk) - it takes a single import and an app key.
+**Dockerfile** optimized for 512 MB RAM:
+- Multi-stage: base → builder → prod-deps → runner
+- Non-root user, HEALTHCHECK, migrations on startup
 
-The free plan needs no payment details and covers 300,000 events a month. You can also browse the [live demo](https://www.observe-demo.nestjs.com/dashboard) first - the whole dashboard over a busy service's data, with nothing to install.
+---
 
-## Resources
+## 🧪 Testing
 
-Check out a few resources that may come in handy when working with NestJS:
+```bash
+# Unit tests (mocked Prisma)
+npm run test
 
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Auto-instrument your application with [NestJS Observe](https://observe.nestjs.com). Distributed tracing, metrics, and logging made easy. Error tracking and performance monitoring for your NestJS applications.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
+# E2E tests (requires real DB)
+npm run test:e2e
+```
 
-## Support
+**Coverage:** 25 tests (10 unit + 13 e2e + 2 app)
+- TasksService: CRUD, filters, pagination, NotFound
+- TasksController: All endpoints, validation, error format
+- Health check
 
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
+---
 
-## Stay in touch
+## 🤖 CI/CD (GitHub Actions)
 
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
+| Workflow | Trigger | Jobs |
+|----------|---------|------|
+| **CI** (`.github/workflows/ci.yml`) | Push/PR to main | Lint → TypeCheck → Unit Tests → Build → E2E (main only) |
+| **CD** (`.github/workflows/cd.yml`) | Push to main | Deploy to Render via API |
 
-## License
+Required GitHub secrets for CD:
+- `RENDER_API_KEY`
+- `RENDER_SERVICE_ID`
 
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+---
+
+## 📚 Documentation
+
+- `docs/openapi.yaml` — OpenAPI 3.1 contract (source of truth)
+- `docs/01-architecture.md` — Architecture & deployment
+- `docs/03-roadmap.md` — Project roadmap
+- `docs/04-ai-log.md` — AI development log
+
+---
+
+## ⚠️ Rules & Constraints
+
+- **No monorepos** — Pure polyrepo
+- **No SQLite** — PostgreSQL cloud only
+- **No proprietary SDKs** — Prisma only
+- **No manual migrations** — `prisma migrate` only
+- **Strict TypeScript** — `strict: true`, `noUncheckedIndexedAccess: true`
+
+---
+
+## 📄 License
+
+UNLICENSED — Private project within TaskFlow ecosystem.
