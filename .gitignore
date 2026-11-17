@@ -31,3 +31,5 @@ prisma/migrations/.migration_lock.toml
 
 # Misc
 *.tsbuildinfo
+# InsForge CLI local config
+.insforge/
