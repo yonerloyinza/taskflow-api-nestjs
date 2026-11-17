@@ -7,3 +7,4 @@
 | Paso 1 | Scaffolding NestJS con CLI, seguridad (Helmet, CORS, Throttler), ValidationPipe, render.yaml | Proyecto compila y lintea sin errores; health check en /health | N/A |
 | Paso 2 | Prisma schema con modelo Task, dual connection (DATABASE_URL/DIRECT_URL), migración init | Schema generado, migración SQL creada manualmente (sin DB real), build/lint OK | N/A |
 | Paso 2 | Conectar a InsForge (`insforge login` + `link`), actualizar `.env` con credenciales reales, aplicar migración | Migración `20261117082734_init` aplicada a DB real InsForge (proyecto `taskflow`), Prisma Client regenerado | N/A |
+| Paso 3 | Implementar endpoints CRUD Tasks per OpenAPI: POST/GET/PATCH/DELETE /tasks, GET /tasks/:id, GET /health | 5 endpoints + filtros (status, priority, assignee), paginación, ValidationPipe global, HttpExceptionFilter formato ErrorResponse, Swagger docs | N/A |
