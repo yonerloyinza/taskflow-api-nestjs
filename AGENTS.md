@@ -3,8 +3,9 @@
 ## 1. Contexto del Repositorio
 - **Proyecto:** `taskflow-api-nestjs`
 - **Stack:** Node.js 20 + TypeScript + NestJS + Prisma ORM
-- **Despliegue:** Render (render.yaml)
+- **Despliegue:** Render (render.yaml) — Web Service nativo + Docker multi-etapa para portabilidad
 - **Contrato Maestro:** `docs/openapi.yaml` (OpenAPI 3.1)
+- **Ecosistema:** Polyrepo TaskFlow (backend NestJS, sin monorepo)
 
 ## 2. Reglas de Ejecución (Human-in-the-Loop)
 1. **Un solo paso a la vez:** Prohibido implementar múltiples pasos sin aprobación explícita.
@@ -15,4 +16,7 @@
 
 ## 3. Reglas Arquitectónicas
 - **Contract-First:** Respeta al 100% las rutas, DTOs, filtros (`status`, `priority`, `assignee`), paginación y formato de errores de `docs/openapi.yaml`.
-- **Vendor-Agnostic DB:** Cero SDKs propietarios de InsForge o Supabase; conexión pura vía `DATABASE_URL` y `DIRECT_URL`.
+- **Vendor-Agnostic DB:** Cero SDKs propietarios de InsForge o Supabase; conexión pura vía `DATABASE_URL` (pooler puerto 6543) y `DIRECT_URL` (puerto 5432) para migraciones.
+- **Health Check Obligatorio:** `GET /health` debe verificar conexión activa a PostgreSQL Cloud (ver `docs/openapi.yaml`).
+- **Despliegue Híbrido:** Render nativo (build: `npx prisma generate`, start: `npx prisma migrate deploy && node dist/main`) + Dockerfile multi-etapa optimizado para 512 MB RAM.
+- **Prohibido:** Monorepos, SQLite, SDKs propietarios (`@supabase/supabase-js`, `@insforge/sdk`), migraciones manuales sin Prisma.
