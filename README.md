@@ -1,11 +1,11 @@
 # TaskFlow API — NestJS Implementation
 
-Backend API for the TaskFlow ecosystem built with **Node.js 20 + TypeScript + NestJS + Prisma ORM**, implementing the shared **OpenAPI 3.1 contract** (`docs/openapi.yaml`).
+Backend API for the TaskFlow ecosystem built with **Node.js 22 + TypeScript + NestJS + Prisma ORM**, implementing the shared **OpenAPI 3.1 contract** (`docs/openapi.yaml`).
 
 ## 🚀 Quick Start
 
 ### Prerequisites
-- Node.js 20+
+- Node.js 22+
 - npm 10+
 - PostgreSQL cloud database (InsForge or Supabase)
 
@@ -83,6 +83,17 @@ DATABASE_URL="postgresql://postgres.PROJECT_REF:PASSWORD@aws-0-region.pooler.sup
 DIRECT_URL="postgresql://postgres:PASSWORD@db.PROJECT_REF.supabase.co:5432/postgres?sslmode=require"
 ```
 
+### Production Environment (VPS)
+En el VPS AWS, las variables se cargan desde `/opt/taskflow/.env.nestjs` (no se usa `.env` local):
+```bash
+# En el VPS: /opt/taskflow/.env.nestjs
+NODE_ENV=production
+PORT=3000
+CORS_ORIGIN=https://tu-dominio.com
+DATABASE_URL="postgresql://...:6543/...?sslmode=require&pgbouncer=true"
+DIRECT_URL="postgresql://...:5432/...?sslmode=require"
+```
+
 ---
 
 ## 📡 API Endpoints
@@ -120,17 +131,23 @@ All responses follow the OpenAPI contract:
 
 ## 🐳 Deployment
 
-### Render (Native Web Service)
-**`render.yaml`** configures:
-- Build: `npm ci && npx prisma generate && npm run build`
-- Start: `npx prisma migrate deploy && node dist/main`
-- Health check: `GET /health`
+### VPS AWS EC2 — Docker + Traefik (Producción)
 
-Required secrets in Render dashboard:
-- `DATABASE_URL`
-- `DIRECT_URL`
+**Arquitectura:**
+```
+Internet (HTTPS) → Traefik (TLS termination) → Docker Network → api-nestjs:3000
+```
 
-### Docker (Portable to AWS)
+**Dockerfile** (`Dockerfile`):
+- Multi-stage: base (node:22-slim + openssl) → builder → prod-deps → runner
+- Non-root user, HEALTHCHECK, `npx prisma migrate deploy && node dist/main.js` on start
+- Build: `npx prisma generate` | Start: `npx prisma migrate deploy && node dist/main.js`
+
+**Traefik** termina TLS y enruta tráfico HTTPS al puerto interno 3000 del contenedor (sin exponer puertos en el host).
+
+**Variables de entorno en VPS:** `/opt/taskflow/.env.nestjs`
+
+### Desarrollo Local con Docker
 ```bash
 # Build
 docker build -t taskflow-api-nestjs .
@@ -141,10 +158,6 @@ docker run -p 3000:3000 \
   -e DIRECT_URL="..." \
   taskflow-api-nestjs
 ```
-
-**Dockerfile** optimized for 512 MB RAM:
-- Multi-stage: base → builder → prod-deps → runner
-- Non-root user, HEALTHCHECK, migrations on startup
 
 ---
 
@@ -169,12 +182,22 @@ npm run test:e2e
 
 | Workflow | Trigger | Jobs |
 |----------|---------|------|
-| **CI** (`.github/workflows/ci.yml`) | Push/PR to main | Lint → TypeCheck → Unit Tests → Build → E2E (main only) |
-| **CD** (`.github/workflows/cd.yml`) | Push to main | Deploy to Render via API |
+| **Deploy** (`.github/workflows/deploy.yml`) | Push to main | SSH → VPS → `git pull` + `docker compose up -d --build --no-deps api-nestjs` + `docker image prune -f` |
 
-Required GitHub secrets for CD:
-- `RENDER_API_KEY`
-- `RENDER_SERVICE_ID`
+**Required GitHub Secrets:**
+- `VPS_SSH_PRIVATE_KEY` — Private key for SSH access to VPS
+- `VPS_HOST` — VPS hostname or IP
+- `VPS_USER` — SSH username (e.g., `ubuntu`)
+
+**Flujo de despliegue:**
+1. Push a `main` → GitHub Actions ejecuta `deploy.yml`
+2. SSH al VPS AWS EC2
+3. `cd /opt/taskflow && git pull origin main`
+4. `docker compose up -d --build --no-deps api-nestjs` (build local en VPS)
+5. `docker image prune -f` (limpieza de imágenes antiguas)
+6. Health check vía Traefik HTTPS
+
+**Sin Docker Hub / ghcr.io** — La imagen se construye directamente en el VPS.
 
 ---
 
@@ -193,6 +216,7 @@ Required GitHub secrets for CD:
 - **No SQLite** — PostgreSQL cloud only
 - **No proprietary SDKs** — Prisma only
 - **No manual migrations** — `prisma migrate` only
+- **No Render / SnapDeploy / Docker Hub / ghcr.io** — VPS AWS + Traefik only
 - **Strict TypeScript** — `strict: true`, `noUncheckedIndexedAccess: true`
 
 ---

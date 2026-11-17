@@ -1,12 +1,15 @@
 # Multi-stage Dockerfile for taskflow-api-nestjs
-# Optimized for 512 MB RAM (Render Free Tier) and portability to AWS
+# Optimized for VPS AWS EC2 with Traefik — node:22-slim + openssl
 
 # ==========================================
 # Stage 1: Base / Dependencies
 # ==========================================
-FROM node:20-alpine AS base
+FROM node:22-slim AS base
 WORKDIR /app
-RUN npm install -g pnpm@latest-10
+
+# Install openssl for Prisma (required for native query engine)
+RUN apt-get update && apt-get install -y --no-install-recommends openssl ca-certificates && \
+    rm -rf /var/lib/apt/lists/*
 
 # ==========================================
 # Stage 2: Builder
@@ -15,22 +18,22 @@ FROM base AS builder
 WORKDIR /app
 
 # Copy package files
-COPY package.json pnpm-lock.yaml* ./
+COPY package.json package-lock.json* ./
 
-# Install dependencies (including devDependencies for build)
-RUN pnpm install --frozen-lockfile
+# Install all dependencies (including devDependencies for build)
+RUN npm ci
 
 # Copy Prisma schema
 COPY prisma ./prisma/
 
 # Generate Prisma Client
-RUN pnpm prisma generate
+RUN npx prisma generate
 
 # Copy source code
 COPY . .
 
 # Build application
-RUN pnpm run build
+RUN npm run build
 
 # ==========================================
 # Stage 3: Production Dependencies
@@ -39,10 +42,10 @@ FROM base AS prod-deps
 WORKDIR /app
 
 # Copy package files
-COPY package.json pnpm-lock.yaml* ./
+COPY package.json package-lock.json* ./
 
 # Install only production dependencies
-RUN pnpm install --frozen-lockfile --prod
+RUN npm ci --omit=dev
 
 # Copy Prisma schema and generated client
 COPY prisma ./prisma/
@@ -50,8 +53,12 @@ COPY prisma ./prisma/
 # ==========================================
 # Stage 4: Runner (Production)
 # ==========================================
-FROM node:20-alpine AS runner
+FROM node:22-slim AS runner
 WORKDIR /app
+
+# Install openssl for Prisma runtime
+RUN apt-get update && apt-get install -y --no-install-recommends openssl ca-certificates && \
+    rm -rf /var/lib/apt/lists/*
 
 # Create non-root user for security
 RUN addgroup -g 1001 -S nodejs && \
@@ -72,12 +79,12 @@ COPY --from=builder --chown=nestjs:nodejs /app/package.json ./package.json
 # Switch to non-root user
 USER nestjs
 
-# Expose port
+# Expose port (internal only, Traefik routes to this)
 EXPOSE 3000
 
 # Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
   CMD wget --no-verbose --tries=1 --spider http://localhost:3000/health || exit 1
 
 # Start application with migrations
-CMD ["sh", "-c", "npx prisma migrate deploy && node dist/main"]
+CMD ["sh", "-c", "npx prisma migrate deploy && node dist/main.js"]

@@ -1,0 +1,66 @@
+name: Deploy to VPS
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    name: Deploy to AWS EC2 via SSH
+    runs-on: ubuntu-latest
+    if: ${{ github.ref == 'refs/heads/main' }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up SSH
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.VPS_SSH_PRIVATE_KEY }}
+
+      - name: Deploy to VPS
+        env:
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_USER: ${{ secrets.VPS_USER }}
+          VPS_DEPLOY_PATH: /opt/taskflow
+        run: |
+          ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
+            ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} << 'EOF'
+            set -e
+            cd /opt/taskflow
+            
+            # Pull latest changes
+            git pull origin main
+            
+            # Build and deploy only the api-nestjs service
+            docker compose up -d --build --no-deps api-nestjs
+            
+            # Clean up unused images
+            docker image prune -f
+            
+            echo "Deployment completed successfully"
+          EOF
+
+      - name: Verify health endpoint
+        env:
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+        run: |
+          # Wait for service to be ready
+          sleep 10
+          
+          # Check health endpoint via Traefik (HTTPS)
+          for i in {1..6}; do
+            if curl -sf "https://${{ secrets.VPS_HOST }}/health" | grep -q '"status":"ok"'; then
+              echo "Health check passed"
+              exit 0
+            fi
+            echo "Waiting for health check... attempt $i/6"
+            sleep 5
+          done
+          
+          echo "Health check failed"
+          exit 1
