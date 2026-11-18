@@ -26,7 +26,7 @@ async function bootstrap() {
   app.useGlobalGuards(app.get(ThrottlerGuard));
 
   const port = process.env.PORT ?? 3000;
-  await app.listen(port);
-  console.log(`🚀 Application running on port ${port}`);
+  await app.listen(port, '0.0.0.0');
+  console.log(`🚀 Application running on 0.0.0.0:${port}`);
 }
 await bootstrap();
