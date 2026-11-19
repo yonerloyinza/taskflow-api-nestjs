@@ -1,0 +1,134 @@
+### =============================================================================
+### TaskFlow API — requests.http
+### Cliente REST (VS Code: extensión "REST Client" de humao.rest-client,
+### o IntelliJ / WebStorm HTTP Client).
+###
+### Uso: abre este archivo y pulsa "Send Request" sobre el bloque que quieras.
+### El bloque "Crear tarea" captura el id en una variable y los bloques
+### "Obtener / Actualizar / Eliminar" lo reutilizan automáticamente.
+### =============================================================================
+
+@host = https://taskflow-api-nest.xprad.com
+@contentType = application/json
+
+### -----------------------------------------------------------------------------
+### 1. Raíz — mensaje de bienvenida
+### Esperado: 200 "Hello World!"
+GET {{host}}/
+
+### -----------------------------------------------------------------------------
+### 2. Health — estado de la API y de la conexión a PostgreSQL Cloud
+### Esperado: 200 { status: "ok", service, database: "up", timestamp }
+GET {{host}}/health
+
+### -----------------------------------------------------------------------------
+### 2b. Documentacion Swagger UI (interactiva)
+### Abre en el navegador: {{host}}/docs
+### Esperado: 200 HTML (Swagger UI)
+GET {{host}}/docs
+
+### -----------------------------------------------------------------------------
+### 2c. OpenAPI spec (JSON) que alimenta la UI
+### Esperado: 200 JSON (OpenAPI 3.x con todos los paths)
+GET {{host}}/docs-json
+
+### -----------------------------------------------------------------------------
+### 3. Crear tarea (request válida) — captura el id en @name create
+### Esperado: 201 + TaskResponseDto (id, title, description, status, priority,
+###           assignee, dueDate, createdAt, updatedAt)
+### @name create
+POST {{host}}/tasks
+Content-Type: {{contentType}}
+
+{
+  "title": "Comprar leche",
+  "description": "Leche entera 1L",
+  "priority": "alta",
+  "assignee": "Juan Perez",
+  "dueDate": "2026-12-31T23:59:59.000Z"
+}
+
+### -----------------------------------------------------------------------------
+### 4. Obtener la tarea recién creada (usa {{create.response.body.id}})
+### Esperado: 200 + TaskResponseDto
+GET {{host}}/tasks/{{create.response.body.id}}
+
+### -----------------------------------------------------------------------------
+### 5. Listar todas las tareas (paginación por defecto: page=1, limit=10)
+### Esperado: 200 { data: [...], meta: { total, page, limit, lastPage } }
+GET {{host}}/tasks
+
+### -----------------------------------------------------------------------------
+### 6. Filtrar por status = pendiente
+### Valores de status: pendiente | en_curso | hecha
+GET {{host}}/tasks?status=pendiente
+
+### -----------------------------------------------------------------------------
+### 7. Filtrar por priority = alta
+### Valores de priority: baja | media | alta
+GET {{host}}/tasks?priority=alta
+
+### -----------------------------------------------------------------------------
+### 8. Filtrar por assignee (búsqueda parcial, case-insensitive) + paginación
+GET {{host}}/tasks?assignee=Juan&page=1&limit=5
+
+### -----------------------------------------------------------------------------
+### 9. Combinar filtros: status + priority + paginación
+GET {{host}}/tasks?status=pendiente&priority=alta&page=1&limit=10
+
+### -----------------------------------------------------------------------------
+### 10. Actualización parcial (PATCH) — cambia status y priority
+### Esperado: 200 + TaskResponseDto actualizada
+PATCH {{host}}/tasks/{{create.response.body.id}}
+Content-Type: {{contentType}}
+
+{
+  "status": "en_curso",
+  "priority": "media"
+}
+
+### -----------------------------------------------------------------------------
+### 11. Actualización de todos los campos
+PATCH {{host}}/tasks/{{create.response.body.id}}
+Content-Type: {{contentType}}
+
+{
+  "title": "Comprar leche desnatada",
+  "description": "Sin lactosa",
+  "status": "hecha",
+  "priority": "baja",
+  "assignee": "Maria Lopez",
+  "dueDate": "2027-01-05T12:00:00.000Z"
+}
+
+### -----------------------------------------------------------------------------
+### 12. ERROR 400 — validación (title con menos de 3 caracteres)
+### Esperado: 400 { statusCode, error: "Bad Request", message: [...], path }
+POST {{host}}/tasks
+Content-Type: {{contentType}}
+
+{
+  "title": "ab",
+  "assignee": "Juan Perez",
+  "dueDate": "2026-12-31T23:59:59.000Z"
+}
+
+### -----------------------------------------------------------------------------
+### 13. ERROR 400 — UUID inválido en la ruta
+### Esperado: 400 { message: ["Validation failed (uuid is expected)"] }
+GET {{host}}/tasks/not-a-uuid
+
+### -----------------------------------------------------------------------------
+### 14. ERROR 404 — tarea inexistente (UUID válido)
+### Esperado: 404 { message: ["Tarea no encontrada"] }
+GET {{host}}/tasks/00000000-0000-4000-8000-000000000000
+
+### -----------------------------------------------------------------------------
+### 15. Eliminar la tarea creada (204 sin cuerpo)
+### Esperado: 204 No Content
+DELETE {{host}}/tasks/{{create.response.body.id}}
+
+### -----------------------------------------------------------------------------
+### 16. Verificar que ya no existe tras borrarla
+### Esperado: 404 { message: ["Tarea no encontrada"] }
+GET {{host}}/tasks/{{create.response.body.id}}
