@@ -47,8 +47,9 @@ COPY package.json package-lock.json* ./
 # Install only production dependencies
 RUN npm ci --omit=dev
 
-# Copy Prisma schema and generated client
+# Copy Prisma schema and generate client (prod runtime needs generated client)
 COPY prisma ./prisma/
+RUN npx prisma generate
 
 # ==========================================
 # Stage 4: Runner (Production)
@@ -84,7 +85,7 @@ EXPOSE 3000
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
-  CMD wget --no-verbose --tries=1 --spider http://localhost:3000/health || exit 1
+  CMD node -e "fetch('http://localhost:3000/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
 
 # Start application with migrations
 CMD ["sh", "-c", "npx prisma migrate deploy && node dist/main.js"]

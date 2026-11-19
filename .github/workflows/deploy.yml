@@ -26,41 +26,36 @@ jobs:
         env:
           VPS_HOST: ${{ secrets.VPS_HOST }}
           VPS_USER: ${{ secrets.VPS_USER }}
-          VPS_DEPLOY_PATH: /opt/taskflow
+          VPS_DEPLOY_PATH: /opt/taskflow-ecosystem/taskflow-api-nestjs
         run: |
           ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
             ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} << 'EOF'
             set -e
-            cd /opt/taskflow
-            
-            # Pull latest changes
-            git pull origin main
-            
+            cd /opt/taskflow-ecosystem/taskflow-api-nestjs
+
+            # Sync working tree to the latest main (repo must stay clean; secrets live in /opt/taskflow)
+            git fetch origin main
+            git reset --hard origin/main
+
             # Build and deploy only the api-nestjs service
             docker compose up -d --build --no-deps api-nestjs
-            
+
             # Clean up unused images
             docker image prune -f
-            
+
             echo "Deployment completed successfully"
           EOF
 
       - name: Verify health endpoint
-        env:
-          VPS_HOST: ${{ secrets.VPS_HOST }}
         run: |
-          # Wait for service to be ready
           sleep 10
-          
-          # Check health endpoint via Traefik (HTTPS)
           for i in {1..6}; do
-            if curl -sf "https://${{ secrets.VPS_HOST }}/health" | grep -q '"status":"ok"'; then
+            if curl -sf "https://taskflow-api-nest.xprad.com/health" | grep -q '"status":"ok"'; then
               echo "Health check passed"
               exit 0
             fi
             echo "Waiting for health check... attempt $i/6"
             sleep 5
           done
-          
           echo "Health check failed"
           exit 1
