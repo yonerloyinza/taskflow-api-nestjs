@@ -62,8 +62,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends openssl ca-cert
     rm -rf /var/lib/apt/lists/*
 
 # Create non-root user for security
-RUN addgroup -g 1001 -S nodejs && \
-    adduser -S nestjs -u 1001
+RUN addgroup --gid 1001 --system nodejs && \
+    adduser --uid 1001 --system --ingroup nodejs nestjs
 
 # Copy production dependencies
 COPY --from=prod-deps --chown=nestjs:nodejs /app/node_modules ./node_modules
